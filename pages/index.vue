@@ -2,12 +2,7 @@
 
 <template>
   <div class="screem">
-    <NuxtLink to="/logIn">
-      <button>Увійти</button>
-    </NuxtLink>
-    <NuxtLink to="/registration">
-      <button>зареєструватись</button>
-    </NuxtLink>
+    <Choosebtn />
   </div>
 </template>
 
