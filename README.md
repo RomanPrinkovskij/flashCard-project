@@ -17,7 +17,6 @@ npm run api:gen
 
 Start the development server on `http://localhost:3000`:
 
-```bash
 # npm
 npm run dev
 
@@ -28,7 +27,6 @@ npm run dev
 
 Build the application for production:
 
-```bash
 # npm
 npm run build
 
