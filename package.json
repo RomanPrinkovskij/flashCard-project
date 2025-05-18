@@ -13,12 +13,14 @@
     "@nuxt/icon": "^1.12.0",
     "@nuxt/image": "^1.10.0",
     "@nuxt/ui": "^3.1.1",
+    "@unocss/nuxt": "^66.1.2",
     "nuxt": "^3.17.3",
     "typescript": "^5.8.3",
     "vue": "^3.5.13",
     "vue-router": "^4.5.1"
   },
   "devDependencies": {
-    "sass-embedded": "^1.88.0"
+    "sass-embedded": "^1.88.0",
+    "unocss-preset-daisy": "^7.0.0"
   }
 }
