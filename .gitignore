@@ -5,6 +5,7 @@
 .nitro
 .cache
 dist
+/api/generated
 
 # Node dependencies
 node_modules

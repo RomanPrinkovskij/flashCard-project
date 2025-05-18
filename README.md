@@ -10,7 +10,8 @@ Make sure to install dependencies:
 # npm
 npm install
 
-
+## APi methods generation from Swagger OpenAPI (you should start flash-cards-core first to generate swagger.json):
+npm run api:gen
 
 ## Development Server
 
