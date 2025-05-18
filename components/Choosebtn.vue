@@ -1,68 +1,30 @@
 <script setup lang="ts"></script>
 
 <template>
-  <div class="screen">
-    <div class="header"></div>
-    <div class="content">
-      <div class="textPart">
+  <main
+    class="min-h-screen flex flex-col items-center gap-16 bg-base-100 py-12"
+    data-theme="light"
+  >
+    <header class="w-full h-12 bg-primary"></header>
+
+    <section
+      class="flex flex-col items-center gap-10 text-center px-6 max-w-3xl"
+    >
+      <p class="text-gray-800 text-2xl font-medium">
         Lorem ipsum dolor sit amet consectetur adipisicing elit. Ratione quas
         obcaecati quisquam. Pariatur, neque quis saepe distinctio mollitia quam
         sit illo. Animi, vel iusto ab voluptate voluptates sapiente voluptatem
         quibusdam.
+      </p>
+
+      <div class="flex flex-col gap-4 w-full max-w-xs">
+        <NuxtLink to="/logIn" class="btn btn-primary w-full text-lg"
+          >Увійти</NuxtLink
+        >
+        <NuxtLink to="/registration" class="btn btn-primary w-full text-lg"
+          >Зареєструватись</NuxtLink
+        >
       </div>
-
-      <NuxtLink to="/logIn" class="btn">
-        <button>Увійти</button>
-      </NuxtLink>
-      <NuxtLink to="/registration" class="btn">
-        <button>Зареєструватись</button>
-      </NuxtLink>
-    </div>
-  </div>
+    </section>
+  </main>
 </template>
-
-<style lang="scss" scoped>
-.screen {
-  display: flex;
-  flex-direction: column;
-  gap: 80px;
-  align-items: center;
-  background: black;
-}
-
-.header {
-  width: 100%;
-  height: 50px;
-  background: #26adde;
-}
-
-.content {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  gap: 40px;
-  color: #c3c7c7;
-}
-
-.textPart {
-  text-align: center;
-  padding: 0 50px;
-  font-family: inter;
-  font-size: 30px;
-  font-weight: 500;
-}
-
-button {
-  border: 1px solid #26adde;
-  width: 300px;
-  height: 50px;
-  border-radius: 100px;
-  background: #26adde;
-  color: #fff;
-  font-family: inter;
-  font-size: 30px;
-  font-weight: 600;
-  text-align: center;
-}
-</style>
