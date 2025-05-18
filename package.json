@@ -7,7 +7,8 @@
     "dev": "nuxt dev",
     "generate": "nuxt generate",
     "preview": "nuxt preview",
-    "postinstall": "nuxt prepare"
+    "postinstall": "nuxt prepare",
+    "api:gen": "orval --config orval.config.ts"
   },
   "dependencies": {
     "@nuxt/icon": "^1.12.0",
@@ -20,6 +21,8 @@
     "vue-router": "^4.5.1"
   },
   "devDependencies": {
+    "@tanstack/vue-query": "^5.76.0",
+    "orval": "^7.9.0",
     "sass-embedded": "^1.88.0",
     "unocss-preset-daisy": "^7.0.0"
   }
