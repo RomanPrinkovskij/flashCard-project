@@ -1,19 +1,24 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue';
-import { useFetch } from '#app';
+import { useRoute } from 'vue-router';
 
-const textPartListOne = ref<
-  { title: string; cards: string; image: string; subjectId: number }[]
->([]);
-
+const textPartListOne = ref<{ title: string; cards: string; image: string }[]>(
+  []
+);
 const isDex = ref(false);
 const isForm = ref(false);
 const name = ref('');
 const description = ref('');
+const route = useRoute();
 
 const emit = defineEmits<{
   (e: 'toggle', value: boolean): void;
 }>();
+
+function toggleValue() {
+  isDex.value = !isDex.value;
+  emit('toggle', isDex.value);
+}
 
 function addFolder() {
   isForm.value = !isForm.value;
@@ -23,9 +28,15 @@ async function addItem() {
   if (!name.value.trim() || !description.value.trim()) return;
 
   const token = localStorage.getItem('accessToken');
+  const subjectId = Number(route.query.subjectId);
+
+  if (!subjectId) {
+    console.error('Subject ID is missing or invalid');
+    return;
+  }
 
   try {
-    await $fetch('/subject', {
+    await $fetch('/deck', {
       method: 'POST',
       baseURL: 'http://localhost:42069',
       headers: {
@@ -34,7 +45,8 @@ async function addItem() {
       },
       body: {
         name: name.value,
-        description: description.value
+        description: description.value,
+        subjectId
       }
     });
 
@@ -42,77 +54,56 @@ async function addItem() {
     description.value = '';
     isForm.value = false;
 
-    await fetchSubjects();
+    await fetchDecks();
   } catch (err) {
-    console.error('Failed to create subject:', err);
+    console.error('Failed to create deck:', err);
   }
 }
 
-async function fetchSubjects() {
+async function fetchDecks() {
   const token = localStorage.getItem('accessToken');
-  if (!token) return;
+  const subjectId = Number(route.query.subjectId);
+
+  if (!token || !subjectId) return;
 
   try {
-    const response = await $fetch('http://localhost:42069/subject', {
-      headers: {
-        Authorization: `Bearer ${token}`
-      }
-    });
-
-    const subjects = (response as any)?.data || response || [];
-
-    // Заповнюємо масив з попередніми значеннями, тимчасово cards як '0'
-    textPartListOne.value = subjects.map((subject: any) => ({
-      title: subject.name,
-      cards: '0',
-      image: '/images/folder.png',
-      subjectId: subject.id
-    }));
-
-    // Для кожного предмета виконуємо запит на кількість колод
-    await Promise.all(
-      textPartListOne.value.map(async (item, index) => {
-        try {
-          const decksResponse = await $fetch(
-            `http://localhost:42069/deck/subject/${item.subjectId}`,
-            {
-              headers: {
-                Authorization: `Bearer ${token}`
-              }
-            }
-          );
-
-          const decks = (decksResponse as any)?.data || decksResponse || [];
-          textPartListOne.value[index].cards = decks.length.toString();
-        } catch (error) {
-          console.error(
-            `Failed to fetch decks for subject ${item.subjectId}`,
-            error
-          );
+    const response = await $fetch(
+      `http://localhost:42069/deck/subject/${subjectId}`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`
         }
-      })
+      }
     );
+
+    const decks = (response as any)?.data || response || [];
+
+    textPartListOne.value = decks.map((deck: any) => ({
+      title: deck.name,
+      cards: deck.cardCount?.toString() || '0',
+      image: '/images/folder.png'
+    }));
   } catch (err) {
-    console.error('Failed to fetch subjects:', err);
+    console.error('Failed to fetch decks:', err);
   }
 }
 
 onMounted(() => {
-  fetchSubjects();
+  fetchDecks();
 });
 </script>
 
 <template>
   <div class="screen">
     <div class="header"></div>
-
     <ul class="grid">
       <li
         class="grid__element"
         v-for="(item, index) in textPartListOne"
         :key="index"
+        @click="toggleValue"
       >
-        <NuxtLink :to="`/dex?subjectId=${item.subjectId}`">
+        <NuxtLink to="/dex">
           <div class="grid__element-img">
             <img :src="item.image" alt="folder" width="100%" height="100%" />
           </div>
