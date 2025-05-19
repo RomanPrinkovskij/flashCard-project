@@ -25,6 +25,7 @@ function toggleValue() {
       <button class="btn_catalogs" @click="toggleValue">Каталоги</button>
     </div>
   </div>
+  
 </template>
 
 <style lang="scss" scoped>
