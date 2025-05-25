@@ -32,6 +32,7 @@ import type {
 import type {
   CreateSubjectDto,
   SubjectResponse,
+  SubjectResponseWithCount,
   UpdateSubjectDto
 } from '../flashCardsAPI.schemas';
 
@@ -117,7 +118,7 @@ export const subjectControllerFindAll = (
 ) => {
       
       
-      return subjectControllerFindAllMutator<SubjectResponse>(
+      return subjectControllerFindAllMutator<SubjectResponseWithCount[]>(
       {url: `/subject`, method: 'GET', signal
     },
       );
@@ -180,7 +181,7 @@ export const subjectControllerFindOne = (
 ) => {
       id = unref(id);
       
-      return subjectControllerFindOneMutator<SubjectResponse>(
+      return subjectControllerFindOneMutator<SubjectResponseWithCount>(
       {url: `/subject/${id}`, method: 'GET', signal
     },
       );

@@ -1,17 +1,14 @@
 <template>
-  <div class="p-4">
+  <div class="min-h-screen w-full p-4 bg-base-100 flex flex-col">
     <div class="flex justify-between items-center mb-4">
       <h2 class="text-2xl font-bold">Колоди</h2>
       <div class="flex gap-2">
-        <button class="btn btn-primary" @click="isForm = !isForm">
-          {{ isForm ? 'Скасувати' : 'Додати колоду' }}
-        </button>
         <button
-          class="btn btn-primary logout-btn"
+          class="btn btn-outline btn-error"
           @click="logout"
-          :disabled="logoutLoading"
+          :disabled="logoutMutation.isPending.value"
         >
-          <span v-if="!logoutLoading">Вийти</span>
+          <span v-if="!logoutMutation.isPending.value">Вийти</span>
           <svg
             v-else
             class="animate-spin h-5 w-5 text-error"
@@ -37,232 +34,321 @@
       </div>
     </div>
 
-    <div v-if="isForm" class="mb-4 space-y-2">
-      <input
-        v-model="title"
-        placeholder="Назва колоди"
-        class="input input-bordered w-full"
-      />
-      <input
-        v-model="description"
-        placeholder="Опис"
-        class="input input-bordered w-full"
-      />
-      <button class="btn btn-success" @click="addDeck">Зберегти</button>
-    </div>
-
-    <div v-if="decks.length === 0" class="text-gray-500">Немає колод</div>
-    <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+    <!-- Modal for adding deck -->
+    <transition name="fade">
       <div
-        v-for="(deck, index) in decks"
-        :key="deck.deckId"
-        class="relative cursor-pointer rounded-[1.25rem] bg-base-100 shadow-xl overflow-hidden transition-shadow duration-300"
-        @mouseenter="hoveredIndex = index"
-        @mouseleave="hoveredIndex = null"
+        v-if="isForm"
+        class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40"
       >
-        <!-- Основний контент колоди -->
-        <div
-          class="p-4 rounded-[1.25rem] transition-colors duration-300"
-          :class="
-            hoveredIndex === index
-              ? 'text-gray-300 bg-primary/20'
-              : 'text-gray-800'
-          "
-        >
-          <h3 class="card-title text-lg font-semibold">{{ deck.title }}</h3>
-          <p class="mb-2">{{ deck.description }}</p>
-          <span
-            class="text-sm"
-            :class="hoveredIndex === index ? 'text-gray-400' : 'text-gray-500'"
+        <div class="bg-white rounded-xl shadow-lg p-8 w-full max-w-md relative">
+          <button
+            class="absolute top-2 right-2 btn btn-sm btn-circle"
+            @click="isForm = false"
           >
-            Карток: {{ deck.cardCount }}
-          </span>
-        </div>
-
-        <!-- Напівпрозорий оверлей з кнопками -->
-        <transition name="fade">
-          <div
-            v-if="hoveredIndex === index"
-            class="absolute inset-0 bg-primary/70 flex justify-center items-center gap-4 text-white rounded-[1.25rem]"
-          >
-            <NuxtLink
-              :to="`/cards?deckId=${deck.deckId}`"
-              class="btn btn-link text-white bg-white/20 hover:bg-white/30 px-3 py-1 rounded"
-              >Редагувати</NuxtLink
-            >
+            ✕
+          </button>
+          <h3 class="text-xl font-bold mb-4">Додати колоду</h3>
+          <input
+            v-model="title"
+            placeholder="Назва колоди"
+            class="input input-bordered w-full mb-2"
+          />
+          <input
+            v-model="description"
+            placeholder="Опис"
+            class="input input-bordered w-full mb-4"
+          />
+          <div class="flex justify-end gap-2">
+            <button class="btn" @click="isForm = false">Скасувати</button>
             <button
-              class="btn btn-link text-white bg-white/20 hover:bg-white/30 px-3 py-1 rounded"
-              @click.prevent="startDeck(deck.deckId)"
+              class="btn btn-success"
+              :disabled="createMutation.isPending.value"
+              @click="addDeck"
             >
-              Запустити
-            </button>
-            <button
-              class="btn btn-link text-white bg-white/20 hover:bg-white/30 px-3 py-1 rounded"
-              @click.prevent="deleteDeck(index)"
-            >
-              Видалити
+              <span v-if="!createMutation.isPending.value">Зберегти</span>
+              <svg
+                v-else
+                class="animate-spin h-5 w-5 text-white"
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+              >
+                <circle
+                  class="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  stroke-width="4"
+                />
+                <path
+                  class="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
+                />
+              </svg>
             </button>
           </div>
-        </transition>
+        </div>
       </div>
+    </transition>
+
+    <!-- Modal for delete confirmation -->
+    <transition name="fade">
+      <div
+        v-if="deleteModalOpen"
+        class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40"
+      >
+        <div class="bg-white rounded-xl shadow-lg p-8 w-full max-w-md relative">
+          <button
+            class="absolute top-2 right-2 btn btn-sm btn-circle"
+            @click="closeDeleteModal"
+          >
+            ✕
+          </button>
+          <h3 class="text-xl font-bold mb-4">Видалити колоду?</h3>
+          <p class="mb-4">
+            Ви впевнені, що хочете видалити цю колоду? Дію не можна скасувати.
+          </p>
+          <div class="flex justify-end gap-2">
+            <button class="btn" @click="closeDeleteModal">Скасувати</button>
+            <button
+              class="btn btn-error"
+              :disabled="deleteMutation.isPending.value"
+              @click="confirmDelete"
+            >
+              <span v-if="!deleteMutation.isPending.value">Видалити</span>
+              <svg
+                v-else
+                class="animate-spin h-5 w-5 text-white"
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <circle
+                  class="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  stroke-width="4"
+                />
+                <path
+                  class="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
+                />
+              </svg>
+            </button>
+          </div>
+        </div>
+      </div>
+    </transition>
+
+    <div class="flex-1 flex flex-col">
+      <div
+        v-if="deckList.length === 0 && !deckQuery.isLoading.value"
+        class="text-gray-500"
+      >
+        Немає колод
+      </div>
+      <div v-else-if="deckQuery.isLoading.value" class="text-gray-500">
+        Завантаження...
+      </div>
+      <div
+        v-else
+        class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 flex-1"
+      >
+        <div
+          v-for="(deck, index) in deckList"
+          :key="deck.id"
+          class="relative cursor-pointer rounded-[1.25rem] bg-base-100 shadow-xl overflow-hidden transition-shadow duration-300 group border border-transparent hover:shadow-2xl hover:border-primary"
+        >
+          <NuxtLink
+            :to="`/cards?deckId=${deck.id}`"
+            class="block p-4 rounded-[1.25rem] transition-colors duration-300 no-underline h-full"
+            :class="'text-gray-800'"
+          >
+            <h3 class="card-title text-lg font-semibold no-underline">
+              {{ deck.name }}
+            </h3>
+            <p class="mb-2 no-underline">{{ deck.description }}</p>
+            <span class="text-sm text-gray-500"
+              >Карток: {{ deck.cardCount ?? 0 }}</span
+            >
+          </NuxtLink>
+          <!-- Play icon in the center, visible on hover, navigates to play -->
+          <span
+            class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-20 flex items-center justify-center opacity-0 group-hover:opacity-100 cursor-pointer transition-opacity duration-200 bg-green-600 hover:bg-green-700 text-white rounded-full shadow-lg"
+            style="width: 4.5rem; height: 4.5rem; font-size: 2.5rem"
+            @click.stop="startDeck(deck.id)"
+            title="Почати"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              class="h-12 w-12"
+              fill="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <polygon points="9.5,7.5 16.5,12 9.5,16.5" />
+            </svg>
+          </span>
+          <div
+            class="absolute top-3 right-3 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+          >
+            <button
+              class="btn btn-md btn-circle btn-ghost"
+              title="Редагувати"
+              @click.stop="startDeckEditing(deck.id)"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                class="h-6 w-6"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M15.232 5.232l3.536 3.536M9 13l6-6m2 2l-6 6m-2 2H7v-2l6-6z"
+                />
+              </svg>
+            </button>
+            <button
+              class="btn btn-md btn-circle btn-ghost"
+              title="Видалити"
+              @click.stop="openDeleteModal(deck.id)"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                class="h-6 w-6"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M6 18L18 6M6 6l12 12"
+                />
+              </svg>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="flex justify-end mt-6">
+      <button class="btn btn-primary" @click="isForm = true">Додати</button>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
+import { ref, computed } from "vue";
+import { useRoute, useRouter } from "vue-router";
+import {
+  useDeckControllerFindBySubject,
+  useDeckControllerCreate,
+  useDeckControllerRemove,
+  useDeckControllerUpdate,
+} from "~/api/generated/decks/decks";
+import { useAuthControllerLogout } from "~/api/generated/auth/auth";
 
 const route = useRoute();
 const router = useRouter();
 
 const isForm = ref(false);
-const title = ref('');
-const description = ref('');
-const hoveredIndex = ref<number | null>(null);
+const title = ref("");
+const description = ref("");
 
-const decks = ref<
-  {
-    deckId: number;
-    title: string;
-    description: string;
-    cardCount: number;
-  }[]
->([]);
+const deckQuery = useDeckControllerFindBySubject(
+  computed(() => route.query.subjectId?.toString() ?? "")
+);
+const deckList = computed(() =>
+  (deckQuery.data.value || []).map((deck: any) => ({
+    ...deck,
+    cardCount: deck.cards?.length ?? 0,
+  }))
+);
+// Delete modal state
+const deleteModalOpen = ref(false);
+const deckIdToDelete = ref<number | null>(null);
+const deleteMutation = useDeckControllerRemove();
 
-const logoutLoading = ref(false);
+function openDeleteModal(id: number) {
+  deckIdToDelete.value = id;
+  deleteModalOpen.value = true;
+}
+
+function closeDeleteModal() {
+  deckIdToDelete.value = null;
+  deleteModalOpen.value = false;
+}
+
+async function confirmDelete() {
+  if (deckIdToDelete.value == null) return;
+  try {
+    await deleteMutation.mutateAsync({ id: deckIdToDelete.value.toString() });
+    closeDeleteModal();
+    await deckQuery.refetch();
+  } catch (error) {
+    alert("Не вдалося видалити колоду. Спробуйте пізніше.");
+  }
+}
+
+// Create deck mutation
+const createMutation = useDeckControllerCreate();
 
 async function addDeck() {
   if (!title.value.trim() || !description.value.trim()) return;
-
-  const token = localStorage.getItem('accessToken');
-  const subjectId = Number(route.query.subjectId);
+  const subjectId = route.query.subjectId;
+  if (!subjectId) return;
 
   try {
-    await $fetch('/deck', {
-      method: 'POST',
-      baseURL: 'http://localhost:42069',
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      },
-      body: {
+    await createMutation.mutateAsync({
+      data: {
         name: title.value,
         description: description.value,
-        subjectId
-      }
+        subjectId: Number(subjectId),
+      },
     });
 
-    title.value = '';
-    description.value = '';
+    title.value = "";
+    description.value = "";
     isForm.value = false;
 
-    await fetchDecks();
+    await deckQuery.refetch();
   } catch (err) {
-    console.error('Failed to create deck:', err);
-  }
-}
-
-async function fetchDecks() {
-  const token = localStorage.getItem('accessToken');
-  const subjectId = Number(route.query.subjectId);
-
-  if (!token || !subjectId) return;
-
-  try {
-    const response = await $fetch(
-      `http://localhost:42069/deck/subject/${subjectId}`,
-      {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
-      }
-    );
-
-    const deckList = (response as any)?.data || response || [];
-
-    decks.value = deckList.map((deck: any) => ({
-      deckId: deck.id,
-      title: deck.name,
-      description: deck.description,
-      cardCount: 0
-    }));
-
-    await Promise.all(
-      decks.value.map(async (deck, index) => {
-        try {
-          const cardsResponse = await $fetch(
-            `http://localhost:42069/card/deck/${deck.deckId}`,
-            {
-              headers: {
-                Authorization: `Bearer ${token}`
-              }
-            }
-          );
-
-          const cards = (cardsResponse as any)?.data || cardsResponse || [];
-          decks.value[index].cardCount = cards.length;
-        } catch (error) {
-          console.error(`Failed to fetch cards for deck ${deck.deckId}`, error);
-        }
-      })
-    );
-  } catch (err) {
-    console.error('Failed to fetch decks:', err);
-  }
-}
-
-async function deleteDeck(index: number) {
-  const deck = decks.value[index];
-  if (!deck) return;
-
-  const token = localStorage.getItem('accessToken');
-  if (!token) return;
-
-  try {
-    await $fetch(`/deck/${deck.deckId}`, {
-      method: 'DELETE',
-      baseURL: 'http://localhost:42069',
-      headers: {
-        Authorization: `Bearer ${token}`
-      }
-    });
-
-    decks.value.splice(index, 1);
-    hoveredIndex.value = null;
-  } catch (error) {
-    console.error(`Failed to delete deck ${deck.deckId}`, error);
-    alert('Не вдалося видалити колоду. Спробуйте пізніше.');
+    console.error("Failed to create deck:", err);
   }
 }
 
 function startDeck(deckId: number) {
-  router.push({ path: '/play', query: { deckId: deckId.toString() } });
+  router.push({ path: "/play", query: { deckId: deckId.toString() } });
 }
+
+function startDeckEditing(deckId: number) {
+   router.push({ path: "/cards", query: { deckId: deckId.toString() } });
+}
+
+const logoutMutation = useAuthControllerLogout();
 
 async function logout() {
-  logoutLoading.value = true;
-  try {
-    await $fetch('/auth/logout', {
-      method: 'POST',
-      baseURL: 'http://localhost:42069',
-      headers: {
-        Authorization: `Bearer ${localStorage.getItem('accessToken')}`
-      }
-    });
-    localStorage.removeItem('accessToken');
-    localStorage.removeItem('refreshToken');
-    router.push('/');
-  } catch (e) {
-    alert('Logout failed: ' + e);
-  } finally {
-    logoutLoading.value = false;
-  }
+  logoutMutation.mutate(undefined, {
+    onSuccess: () => {
+      localStorage.removeItem("accessToken");
+      localStorage.removeItem("refreshToken");
+      router.push("/");
+    },
+    onError: (error) => {
+      alert("Logout failed: " + error);
+    },
+  });
 }
-
-onMounted(() => {
-  fetchDecks();
-});
 </script>
 
 <style scoped>
@@ -278,20 +364,7 @@ onMounted(() => {
 .fade-leave-from {
   opacity: 1;
 }
-
-.btn-link {
+.no-underline {
   text-decoration: none !important;
 }
-
-/* Стилі для logout кнопки */
-.logout-btn {
-  transition: background-color 0.3s ease, border-color 0.3s ease,
-    color 0.3s ease;
-}
-
-.logout-btn:hover {
-  background-color: #dc2626; /* Червоний колір Tailwind red-600 */
-  border-color: #dc2626;
-  color: white;
-}
-</style>
+</style> 

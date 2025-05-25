@@ -14,11 +14,6 @@ export interface CreateCardDto {
   deckId: number;
 }
 
-/**
- * Public URL of the card image (null if no image uploaded)
- */
-export type CardResponseImgUrl = { [key: string]: unknown };
-
 export interface CardResponse {
   /** Unique identifier of the card */
   id: number;
@@ -31,7 +26,7 @@ export interface CardResponse {
   /** Owner (user) ID */
   ownerId: number;
   /** Public URL of the card image (null if no image uploaded) */
-  imgUrl?: CardResponseImgUrl;
+  imgUrl?: string;
 }
 
 export interface UpdateCardDto {
@@ -50,20 +45,33 @@ export interface CreateSubjectDto {
   description: string;
 }
 
-/**
- * The description of the subject
- */
-export type SubjectResponseDescription = { [key: string]: unknown };
-
 export interface SubjectResponse {
   /** The unique ID of the subject */
   id: number;
   /** The name of the subject */
   name: string;
   /** The description of the subject */
-  description: SubjectResponseDescription;
+  description?: string;
   /** The ID of the user who owns the subject */
   ownerId: number;
+}
+
+export interface SubjectCount {
+  /** Number of decks */
+  decks: number;
+}
+
+export interface SubjectResponseWithCount {
+  /** The unique ID of the subject */
+  id: number;
+  /** The name of the subject */
+  name: string;
+  /** The description of the subject */
+  description?: string;
+  /** The ID of the user who owns the subject */
+  ownerId: number;
+  /** Count of related decks to this subject */
+  _count: SubjectCount;
 }
 
 export interface UpdateSubjectDto {
@@ -98,6 +106,8 @@ export interface DeckResponse {
   description?: DeckResponseDescription;
   /** The subject this deck belongs to */
   subject: SubjectResponse;
+  /** Related cards */
+  cards: CardResponse[];
 }
 
 export interface UpdateDeckDto {
