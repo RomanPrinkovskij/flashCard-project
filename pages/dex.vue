@@ -62,7 +62,7 @@
             >
             <button
               class="btn btn-link text-white bg-white/20 hover:bg-white/30 px-3 py-1 rounded"
-              @click.prevent
+              @click.prevent="startDeck(deck.deckId)"
             >
               Запустити
             </button>
@@ -81,9 +81,10 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
-import { useRoute } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 
 const route = useRoute();
+const router = useRouter();
 
 const isForm = ref(false);
 const title = ref('');
@@ -196,13 +197,17 @@ async function deleteDeck(index: number) {
       }
     });
 
-    // Видаляємо з локального масиву лише після успішного видалення на сервері
     decks.value.splice(index, 1);
     hoveredIndex.value = null;
   } catch (error) {
     console.error(`Failed to delete deck ${deck.deckId}`, error);
     alert('Не вдалося видалити колоду. Спробуйте пізніше.');
   }
+}
+
+// Логіка кнопки "Запустити" — перекидає на /play з deckId в параметрах
+function startDeck(deckId: number) {
+  router.push({ path: '/play', query: { deckId: deckId.toString() } });
 }
 
 onMounted(() => {
@@ -223,5 +228,9 @@ onMounted(() => {
 .fade-enter-to,
 .fade-leave-from {
   opacity: 1;
+}
+
+.btn-link {
+  text-decoration: none !important;
 }
 </style>
