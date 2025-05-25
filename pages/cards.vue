@@ -2,13 +2,43 @@
   <div class="p-4">
     <div class="flex justify-between items-center mb-4">
       <h2 class="text-2xl font-bold">Картки</h2>
-      <button
-        class="btn btn-primary"
-        @click="isForm = !isForm"
-        v-if="!isEditing"
-      >
-        {{ isForm ? 'Скасувати' : 'Додати картку' }}
-      </button>
+      <div class="flex gap-2">
+        <button
+          class="btn btn-primary"
+          @click="isForm = !isForm"
+          v-if="!isEditing"
+        >
+          {{ isForm ? 'Скасувати' : 'Додати картку' }}
+        </button>
+        <button
+          class="btn btn-primary logout-btn"
+          @click="logout"
+          :disabled="logoutLoading"
+        >
+          <span v-if="!logoutLoading">Вийти</span>
+          <svg
+            v-else
+            class="animate-spin h-5 w-5 text-error"
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+          >
+            <circle
+              class="opacity-25"
+              cx="12"
+              cy="12"
+              r="10"
+              stroke="currentColor"
+              stroke-width="4"
+            ></circle>
+            <path
+              class="opacity-75"
+              fill="currentColor"
+              d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
+            ></path>
+          </svg>
+        </button>
+      </div>
     </div>
 
     <!-- Форма додавання нової картки -->
@@ -90,9 +120,10 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
-import { useRoute } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 
 const route = useRoute();
+const router = useRouter();
 
 const isForm = ref(false);
 const isEditing = ref(false);
@@ -114,6 +145,8 @@ const textPartListOne = ref<
     deckId: number;
   }[]
 >([]);
+
+const logoutLoading = ref(false);
 
 async function addItem() {
   if (!question.value.trim() || !answer.value.trim()) return;
@@ -180,7 +213,6 @@ async function fetchCards() {
   }
 }
 
-// Почати редагування картки
 function startEdit(card: (typeof textPartListOne.value)[0]) {
   editCardId.value = card.cardId;
   editQuestion.value = card.question;
@@ -189,7 +221,6 @@ function startEdit(card: (typeof textPartListOne.value)[0]) {
   isForm.value = false;
 }
 
-// Відмінити редагування
 function cancelEdit() {
   isEditing.value = false;
   editCardId.value = null;
@@ -197,7 +228,6 @@ function cancelEdit() {
   editAnswer.value = '';
 }
 
-// Зберегти зміни після редагування
 async function saveEdit() {
   if (
     !editQuestion.value.trim() ||
@@ -214,7 +244,7 @@ async function saveEdit() {
 
   try {
     await $fetch(`/card/${editCardId.value}`, {
-      method: 'PATCH', // Змінив метод на PATCH
+      method: 'PATCH',
       baseURL: 'http://localhost:42069',
       headers: {
         Authorization: `Bearer ${token}`,
@@ -226,7 +256,6 @@ async function saveEdit() {
       }
     });
 
-    // Оновлюємо локальний список карток
     const cardIndex = textPartListOne.value.findIndex(
       (c) => c.cardId === editCardId.value
     );
@@ -242,7 +271,6 @@ async function saveEdit() {
   }
 }
 
-// Видалення картки
 async function deleteCard(index: number) {
   const card = textPartListOne.value[index];
   if (!card) return;
@@ -267,6 +295,26 @@ async function deleteCard(index: number) {
   }
 }
 
+async function logout() {
+  logoutLoading.value = true;
+  try {
+    await $fetch('/auth/logout', {
+      method: 'POST',
+      baseURL: 'http://localhost:42069',
+      headers: {
+        Authorization: `Bearer ${localStorage.getItem('accessToken')}`
+      }
+    });
+    localStorage.removeItem('accessToken');
+    localStorage.removeItem('refreshToken');
+    router.push('/');
+  } catch (e) {
+    alert('Logout failed: ' + e);
+  } finally {
+    logoutLoading.value = false;
+  }
+}
+
 onMounted(() => {
   fetchCards();
 });
@@ -288,5 +336,17 @@ onMounted(() => {
 }
 .btn-link {
   text-decoration: none !important;
+}
+
+/* Стилі для logout кнопки */
+.logout-btn {
+  transition: background-color 0.3s ease, border-color 0.3s ease,
+    color 0.3s ease;
+}
+
+.logout-btn:hover {
+  background-color: #dc2626; /* Червоний колір Tailwind red-600 */
+  border-color: #dc2626;
+  color: white;
 }
 </style>

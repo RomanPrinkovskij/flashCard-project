@@ -73,13 +73,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from "vue";
-import { useRouter } from "vue-router";
-import { useAuthControllerLogin } from "~/api/generated/auth/auth";
-import type { LoginDto } from "~/api/generated/flashCardsAPI.schemas";
+import { ref } from 'vue';
+import { useRouter } from 'vue-router';
+import { useAuthControllerLogin } from '~/api/generated/auth/auth';
+import type { LoginDto } from '~/api/generated/flashCardsAPI.schemas';
 
-const email = ref("");
-const password = ref("");
+const email = ref('');
+const password = ref('');
 const router = useRouter();
 
 const mutation = useAuthControllerLogin();
@@ -87,19 +87,19 @@ const mutation = useAuthControllerLogin();
 function submitLogin() {
   const loginDto: LoginDto = {
     email: email.value,
-    password: password.value,
+    password: password.value
   };
   mutation.mutate(
     { data: loginDto },
     {
       onSuccess: (response) => {
-        localStorage.setItem("accessToken", response.accessToken);
-        localStorage.setItem("refreshToken", response.refreshToken);
-        router.push("/catalog");
+        localStorage.setItem('accessToken', response.accessToken);
+        localStorage.setItem('refreshToken', response.refreshToken);
+        router.push('/catalog');
       },
       onError: (error) => {
-        alert("Login failed: " + error);
-      },
+        alert('Login failed: ' + error);
+      }
     }
   );
 }

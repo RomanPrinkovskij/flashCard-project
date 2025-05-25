@@ -2,9 +2,39 @@
   <div class="p-4">
     <div class="flex justify-between items-center mb-4">
       <h2 class="text-2xl font-bold">Каталоги</h2>
-      <button class="btn btn-primary" @click="isForm = !isForm">
-        {{ isForm ? 'Скасувати' : 'Додати каталог' }}
-      </button>
+      <div class="flex gap-2">
+        <button class="btn btn-primary" @click="isForm = !isForm">
+          {{ isForm ? 'Скасувати' : 'Додати каталог' }}
+        </button>
+        <button
+          class="btn btn-outline btn-error"
+          @click="logout"
+          :disabled="logoutMutation.isPending.value"
+        >
+          <span v-if="!logoutMutation.isPending.value">Вийти</span>
+          <svg
+            v-else
+            class="animate-spin h-5 w-5 text-error"
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+          >
+            <circle
+              class="opacity-25"
+              cx="12"
+              cy="12"
+              r="10"
+              stroke="currentColor"
+              stroke-width="4"
+            ></circle>
+            <path
+              class="opacity-75"
+              fill="currentColor"
+              d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
+            ></path>
+          </svg>
+        </button>
+      </div>
     </div>
 
     <div v-if="isForm" class="mb-4 space-y-2">
@@ -78,8 +108,11 @@
 </template>
 
 <script setup lang="ts">
-// Код скрипта залишився без змін, він є в попередньому відповіді
-import { ref, onMounted } from 'vue';
+import { ref } from 'vue';
+import { useRouter } from 'vue-router';
+import { useAuthControllerLogout } from '~/api/generated/auth/auth';
+
+const router = useRouter();
 
 const textPartListOne = ref<
   {
@@ -195,6 +228,22 @@ async function deleteItem(index: number) {
     console.error(`Failed to delete subject ${item.subjectId}`, error);
     alert('Не вдалося видалити каталог. Спробуйте пізніше.');
   }
+}
+
+// Логіка логауту
+const logoutMutation = useAuthControllerLogout();
+
+async function logout() {
+  logoutMutation.mutate(undefined, {
+    onSuccess: () => {
+      localStorage.removeItem('accessToken');
+      localStorage.removeItem('refreshToken');
+      router.push('/'); // <-- редірект на стартову сторінку, де рендериться Choosebtn
+    },
+    onError: (error) => {
+      alert('Logout failed: ' + error);
+    }
+  });
 }
 
 onMounted(() => {

@@ -2,9 +2,39 @@
   <div class="p-4">
     <div class="flex justify-between items-center mb-4">
       <h2 class="text-2xl font-bold">Колоди</h2>
-      <button class="btn btn-primary" @click="isForm = !isForm">
-        {{ isForm ? 'Скасувати' : 'Додати колоду' }}
-      </button>
+      <div class="flex gap-2">
+        <button class="btn btn-primary" @click="isForm = !isForm">
+          {{ isForm ? 'Скасувати' : 'Додати колоду' }}
+        </button>
+        <button
+          class="btn btn-primary logout-btn"
+          @click="logout"
+          :disabled="logoutLoading"
+        >
+          <span v-if="!logoutLoading">Вийти</span>
+          <svg
+            v-else
+            class="animate-spin h-5 w-5 text-error"
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+          >
+            <circle
+              class="opacity-25"
+              cx="12"
+              cy="12"
+              r="10"
+              stroke="currentColor"
+              stroke-width="4"
+            ></circle>
+            <path
+              class="opacity-75"
+              fill="currentColor"
+              d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
+            ></path>
+          </svg>
+        </button>
+      </div>
     </div>
 
     <div v-if="isForm" class="mb-4 space-y-2">
@@ -100,6 +130,8 @@ const decks = ref<
   }[]
 >([]);
 
+const logoutLoading = ref(false);
+
 async function addDeck() {
   if (!title.value.trim() || !description.value.trim()) return;
 
@@ -180,7 +212,6 @@ async function fetchDecks() {
   }
 }
 
-// Видалити колоду з масиву
 async function deleteDeck(index: number) {
   const deck = decks.value[index];
   if (!deck) return;
@@ -205,9 +236,28 @@ async function deleteDeck(index: number) {
   }
 }
 
-// Логіка кнопки "Запустити" — перекидає на /play з deckId в параметрах
 function startDeck(deckId: number) {
   router.push({ path: '/play', query: { deckId: deckId.toString() } });
+}
+
+async function logout() {
+  logoutLoading.value = true;
+  try {
+    await $fetch('/auth/logout', {
+      method: 'POST',
+      baseURL: 'http://localhost:42069',
+      headers: {
+        Authorization: `Bearer ${localStorage.getItem('accessToken')}`
+      }
+    });
+    localStorage.removeItem('accessToken');
+    localStorage.removeItem('refreshToken');
+    router.push('/');
+  } catch (e) {
+    alert('Logout failed: ' + e);
+  } finally {
+    logoutLoading.value = false;
+  }
 }
 
 onMounted(() => {
@@ -216,7 +266,6 @@ onMounted(() => {
 </script>
 
 <style scoped>
-/* Плавна поява/зникнення оверлею */
 .fade-enter-active,
 .fade-leave-active {
   transition: opacity 0.25s ease;
@@ -232,5 +281,17 @@ onMounted(() => {
 
 .btn-link {
   text-decoration: none !important;
+}
+
+/* Стилі для logout кнопки */
+.logout-btn {
+  transition: background-color 0.3s ease, border-color 0.3s ease,
+    color 0.3s ease;
+}
+
+.logout-btn:hover {
+  background-color: #dc2626; /* Червоний колір Tailwind red-600 */
+  border-color: #dc2626;
+  color: white;
 }
 </style>

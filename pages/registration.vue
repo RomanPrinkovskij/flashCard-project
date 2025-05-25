@@ -105,40 +105,40 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from "vue";
-import { useRouter } from "vue-router";
-import { useAuthControllerRegister } from "~/api/generated/auth/auth";
-import type { CreateUserDto } from "~/api/generated/flashCardsAPI.schemas";
+import { ref } from 'vue';
+import { useRouter } from 'vue-router';
+import { useAuthControllerRegister } from '~/api/generated/auth/auth';
+import type { CreateUserDto } from '~/api/generated/flashCardsAPI.schemas';
 
-const email = ref("");
-const name = ref("");
-const password = ref("");
-const passwordConfirm = ref("");
+const email = ref('');
+const name = ref('');
+const password = ref('');
+const passwordConfirm = ref('');
 const router = useRouter();
 
 const mutation = useAuthControllerRegister();
 
 function submitRegister() {
   if (password.value !== passwordConfirm.value) {
-    alert("Passwords do not match!");
+    alert('Passwords do not match!');
     return;
   }
 
   const newUser: CreateUserDto = {
     name: name.value,
     email: email.value,
-    password: password.value,
+    password: password.value
   };
 
   mutation.mutate(
     { data: newUser },
     {
       onSuccess() {
-        router.push("/login");
+        router.push('/login');
       },
       onError(error) {
-        alert("Registration failed: " + error);
-      },
+        alert('Registration failed: ' + error);
+      }
     }
   );
 }

@@ -8,5 +8,4 @@
 
 <style lang="scss" scoped>
 @use '/assets/scss/main.scss';
-
 </style>

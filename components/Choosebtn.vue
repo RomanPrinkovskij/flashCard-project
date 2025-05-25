@@ -5,7 +5,11 @@
     class="min-h-screen flex flex-col items-center gap-16 bg-base-100 py-12"
     data-theme="light"
   >
-    <header class="w-full h-12 bg-primary"></header>
+    <header
+      class="w-full h-14 bg-primary flex items-center justify-center text-white font-semibold text-3xl select-none"
+    >
+      OstRom
+    </header>
 
     <section
       class="flex flex-col items-center gap-10 text-center px-6 max-w-3xl"
