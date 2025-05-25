@@ -1,23 +1,100 @@
+<template>
+  <div class="p-4">
+    <div class="flex justify-between items-center mb-4">
+      <h2 class="text-2xl font-bold">Каталоги</h2>
+      <button class="btn btn-primary" @click="isForm = !isForm">
+        {{ isForm ? 'Скасувати' : 'Додати каталог' }}
+      </button>
+    </div>
+
+    <div v-if="isForm" class="mb-4 space-y-2">
+      <input
+        v-model="name"
+        placeholder="Назва каталогу"
+        class="input input-bordered w-full"
+      />
+      <input
+        v-model="description"
+        placeholder="Опис каталогу"
+        class="input input-bordered w-full"
+      />
+      <button class="btn btn-success" @click="addItem">Зберегти</button>
+    </div>
+
+    <div v-if="textPartListOne.length === 0" class="text-gray-500">
+      Немає каталогів
+    </div>
+    <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div
+        v-for="(item, index) in textPartListOne"
+        :key="item.subjectId"
+        class="relative cursor-pointer rounded-[1.25rem] bg-base-100 shadow-xl overflow-hidden transition-shadow duration-300"
+        @mouseenter="hoveredIndex = index"
+        @mouseleave="hoveredIndex = null"
+      >
+        <NuxtLink
+          :to="`/dex?subjectId=${item.subjectId}`"
+          class="block p-4 rounded-[1.25rem] transition-colors duration-300 no-underline"
+          :class="
+            hoveredIndex === index
+              ? 'text-gray-300 bg-primary/20'
+              : 'text-gray-800'
+          "
+        >
+          <h3 class="card-title text-lg font-semibold no-underline">
+            {{ item.title }}
+          </h3>
+          <p class="mb-2 no-underline">{{ item.description }}</p>
+          <span
+            class="text-sm"
+            :class="hoveredIndex === index ? 'text-gray-400' : 'text-gray-500'"
+          >
+            Колод: {{ item.cards }}
+          </span>
+        </NuxtLink>
+
+        <!-- Оверлей кнопок при ховері -->
+        <transition name="fade">
+          <div
+            v-if="hoveredIndex === index"
+            class="absolute inset-0 bg-primary/70 flex justify-center items-center gap-4 text-white rounded-[1.25rem]"
+          >
+            <NuxtLink
+              :to="`/dex?subjectId=${item.subjectId}`"
+              class="btn btn-link text-white bg-white/20 hover:bg-white/30 px-3 py-1 rounded no-underline"
+              >Редагувати</NuxtLink
+            >
+            <button
+              class="btn btn-link text-white bg-white/20 hover:bg-white/30 px-3 py-1 rounded no-underline"
+              @click.prevent="deleteItem(index)"
+            >
+              Видалити
+            </button>
+          </div>
+        </transition>
+      </div>
+    </div>
+  </div>
+</template>
+
 <script setup lang="ts">
-import { onMounted, ref } from 'vue';
-import { useFetch } from '#app';
+// Код скрипта залишився без змін, він є в попередньому відповіді
+import { ref, onMounted } from 'vue';
 
 const textPartListOne = ref<
-  { title: string; cards: string; image: string; subjectId: number }[]
+  {
+    title: string;
+    cards: string;
+    image: string;
+    subjectId: number;
+    description: string;
+  }[]
 >([]);
 
-const isDex = ref(false);
 const isForm = ref(false);
 const name = ref('');
 const description = ref('');
-
-const emit = defineEmits<{
-  (e: 'toggle', value: boolean): void;
-}>();
-
-function addFolder() {
-  isForm.value = !isForm.value;
-}
+const hoveredIndex = ref<number | null>(null);
 
 async function addItem() {
   if (!name.value.trim() || !description.value.trim()) return;
@@ -61,15 +138,14 @@ async function fetchSubjects() {
 
     const subjects = (response as any)?.data || response || [];
 
-    // Заповнюємо масив з попередніми значеннями, тимчасово cards як '0'
     textPartListOne.value = subjects.map((subject: any) => ({
       title: subject.name,
+      description: subject.description || '',
       cards: '0',
       image: '/images/folder.png',
       subjectId: subject.id
     }));
 
-    // Для кожного предмета виконуємо запит на кількість колод
     await Promise.all(
       textPartListOne.value.map(async (item, index) => {
         try {
@@ -97,174 +173,52 @@ async function fetchSubjects() {
   }
 }
 
+async function deleteItem(index: number) {
+  const item = textPartListOne.value[index];
+  if (!item) return;
+
+  const token = localStorage.getItem('accessToken');
+  if (!token) return;
+
+  try {
+    await $fetch(`/subject/${item.subjectId}`, {
+      method: 'DELETE',
+      baseURL: 'http://localhost:42069',
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    });
+
+    textPartListOne.value.splice(index, 1);
+    hoveredIndex.value = null;
+  } catch (error) {
+    console.error(`Failed to delete subject ${item.subjectId}`, error);
+    alert('Не вдалося видалити каталог. Спробуйте пізніше.');
+  }
+}
+
 onMounted(() => {
   fetchSubjects();
 });
 </script>
 
-<template>
-  <div class="screen">
-    <div class="header"></div>
-
-    <ul class="grid">
-      <li
-        class="grid__element"
-        v-for="(item, index) in textPartListOne"
-        :key="index"
-      >
-        <NuxtLink :to="`/dex?subjectId=${item.subjectId}`">
-          <div class="grid__element-img">
-            <img :src="item.image" alt="folder" width="100%" height="100%" />
-          </div>
-          <div class="grid__element-text">
-            <h3>{{ item.title }}</h3>
-            <span>Колод: {{ item.cards }}</span>
-          </div>
-        </NuxtLink>
-      </li>
-    </ul>
-
-    <div class="form" v-if="isForm">
-      <div class="header"></div>
-      <div class="content">
-        <input type="text" placeholder="Назва каталогу" v-model="name" />
-        <input type="text" placeholder="Опис каталогу" v-model="description" />
-        <div class="buttons">
-          <button class="blue" @click="addItem">Додати</button>
-          <button class="red" @click="addFolder">Закрити</button>
-        </div>
-      </div>
-    </div>
-
-    <button class="plus" @click="addFolder">+</button>
-  </div>
-</template>
-
-<style lang="scss" scoped>
-.header {
-  width: 100%;
-  height: 50px;
-  background: #26adde;
+<style scoped>
+/* Плавна поява/зникнення оверлею */
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.25s ease;
+}
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
+.fade-enter-to,
+.fade-leave-from {
+  opacity: 1;
 }
 
-.grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 16px;
-  padding: 16px;
-
-  &__element {
-    background: #ffffff;
-    border-radius: 12px;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
-    overflow: hidden;
-    cursor: pointer;
-    transition: transform 0.2s ease;
-
-    &:hover {
-      transform: translateY(-2px);
-    }
-
-    &-img {
-      width: 100%;
-      height: 150px;
-
-      img {
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-      }
-    }
-
-    &-text {
-      padding: 12px;
-      color: #333;
-
-      h3 {
-        font-size: 16px;
-        font-weight: bold;
-        margin-bottom: 4px;
-      }
-
-      span {
-        font-size: 14px;
-        color: #666;
-      }
-    }
-  }
-}
-
-.plus {
-  width: 50px;
-  height: 50px;
-  background: #26adde;
-  color: white;
-  border: none;
-  border-radius: 50%;
-  font-size: 24px;
-  position: absolute;
-  right: 16px;
-  bottom: 16px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-  cursor: pointer;
-}
-
-.form {
-  position: absolute;
-  width: 100%;
-  max-width: 400px;
-  left: 50%;
-  transform: translateX(-50%);
-  top: 200px;
-  background: #ffffff;
-  border-radius: 20px;
-  border: 2px solid #26adde;
-  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
-  padding: 20px;
-  z-index: 10;
-}
-
-.content {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-
-  input {
-    height: 50px;
-    padding: 0 12px;
-    border: 1px solid #ccc;
-    border-radius: 10px;
-    font-size: 16px;
-    color: #333;
-
-    &::placeholder {
-      color: #aaa;
-    }
-  }
-
-  .buttons {
-    display: flex;
-    justify-content: space-between;
-
-    button {
-      flex: 1;
-      height: 45px;
-      border-radius: 9999px;
-      font-size: 16px;
-      font-weight: 600;
-      border: none;
-      color: white;
-      margin: 0 5px;
-      cursor: pointer;
-
-      &.red {
-        background: #e81f1f;
-      }
-
-      &.blue {
-        background: #26adde;
-      }
-    }
-  }
+/* Забираємо підкреслення з посилань */
+.no-underline {
+  text-decoration: none !important;
 }
 </style>

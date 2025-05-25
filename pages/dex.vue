@@ -1,39 +1,109 @@
+<template>
+  <div class="p-4">
+    <div class="flex justify-between items-center mb-4">
+      <h2 class="text-2xl font-bold">Колоди</h2>
+      <button class="btn btn-primary" @click="isForm = !isForm">
+        {{ isForm ? 'Скасувати' : 'Додати колоду' }}
+      </button>
+    </div>
+
+    <div v-if="isForm" class="mb-4 space-y-2">
+      <input
+        v-model="title"
+        placeholder="Назва колоди"
+        class="input input-bordered w-full"
+      />
+      <input
+        v-model="description"
+        placeholder="Опис"
+        class="input input-bordered w-full"
+      />
+      <button class="btn btn-success" @click="addDeck">Зберегти</button>
+    </div>
+
+    <div v-if="decks.length === 0" class="text-gray-500">Немає колод</div>
+    <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div
+        v-for="(deck, index) in decks"
+        :key="deck.deckId"
+        class="relative cursor-pointer rounded-[1.25rem] bg-base-100 shadow-xl overflow-hidden transition-shadow duration-300"
+        @mouseenter="hoveredIndex = index"
+        @mouseleave="hoveredIndex = null"
+      >
+        <!-- Основний контент колоди -->
+        <div
+          class="p-4 rounded-[1.25rem] transition-colors duration-300"
+          :class="
+            hoveredIndex === index
+              ? 'text-gray-300 bg-primary/20'
+              : 'text-gray-800'
+          "
+        >
+          <h3 class="card-title text-lg font-semibold">{{ deck.title }}</h3>
+          <p class="mb-2">{{ deck.description }}</p>
+          <span
+            class="text-sm"
+            :class="hoveredIndex === index ? 'text-gray-400' : 'text-gray-500'"
+          >
+            Карток: {{ deck.cardCount }}
+          </span>
+        </div>
+
+        <!-- Напівпрозорий оверлей з кнопками -->
+        <transition name="fade">
+          <div
+            v-if="hoveredIndex === index"
+            class="absolute inset-0 bg-primary/70 flex justify-center items-center gap-4 text-white rounded-[1.25rem]"
+          >
+            <NuxtLink
+              :to="`/cards?deckId=${deck.deckId}`"
+              class="btn btn-link text-white bg-white/20 hover:bg-white/30 px-3 py-1 rounded"
+              >Редагувати</NuxtLink
+            >
+            <button
+              class="btn btn-link text-white bg-white/20 hover:bg-white/30 px-3 py-1 rounded"
+              @click.prevent
+            >
+              Запустити
+            </button>
+            <button
+              class="btn btn-link text-white bg-white/20 hover:bg-white/30 px-3 py-1 rounded"
+              @click.prevent="deleteDeck(index)"
+            >
+              Видалити
+            </button>
+          </div>
+        </transition>
+      </div>
+    </div>
+  </div>
+</template>
+
 <script setup lang="ts">
-import { onMounted, ref } from 'vue';
+import { ref, onMounted } from 'vue';
 import { useRoute } from 'vue-router';
 
-const textPartListOne = ref<{ title: string; cards: string; image: string }[]>(
-  []
-);
-const isDex = ref(false);
-const isForm = ref(false);
-const name = ref('');
-const description = ref('');
 const route = useRoute();
 
-const emit = defineEmits<{
-  (e: 'toggle', value: boolean): void;
-}>();
+const isForm = ref(false);
+const title = ref('');
+const description = ref('');
+const hoveredIndex = ref<number | null>(null);
 
-function toggleValue() {
-  isDex.value = !isDex.value;
-  emit('toggle', isDex.value);
-}
+const decks = ref<
+  {
+    deckId: number;
+    title: string;
+    description: string;
+    cardCount: number;
+  }[]
+>([]);
 
-function addFolder() {
-  isForm.value = !isForm.value;
-}
-
-async function addItem() {
-  if (!name.value.trim() || !description.value.trim()) return;
+async function addDeck() {
+  if (!title.value.trim() || !description.value.trim()) return;
 
   const token = localStorage.getItem('accessToken');
   const subjectId = Number(route.query.subjectId);
-
-  if (!subjectId) {
-    console.error('Subject ID is missing or invalid');
-    return;
-  }
 
   try {
     await $fetch('/deck', {
@@ -44,13 +114,13 @@ async function addItem() {
         'Content-Type': 'application/json'
       },
       body: {
-        name: name.value,
+        name: title.value,
         description: description.value,
         subjectId
       }
     });
 
-    name.value = '';
+    title.value = '';
     description.value = '';
     isForm.value = false;
 
@@ -76,15 +146,62 @@ async function fetchDecks() {
       }
     );
 
-    const decks = (response as any)?.data || response || [];
+    const deckList = (response as any)?.data || response || [];
 
-    textPartListOne.value = decks.map((deck: any) => ({
+    decks.value = deckList.map((deck: any) => ({
+      deckId: deck.id,
       title: deck.name,
-      cards: deck.cardCount?.toString() || '0',
-      image: '/images/folder.png'
+      description: deck.description,
+      cardCount: 0
     }));
+
+    await Promise.all(
+      decks.value.map(async (deck, index) => {
+        try {
+          const cardsResponse = await $fetch(
+            `http://localhost:42069/card/deck/${deck.deckId}`,
+            {
+              headers: {
+                Authorization: `Bearer ${token}`
+              }
+            }
+          );
+
+          const cards = (cardsResponse as any)?.data || cardsResponse || [];
+          decks.value[index].cardCount = cards.length;
+        } catch (error) {
+          console.error(`Failed to fetch cards for deck ${deck.deckId}`, error);
+        }
+      })
+    );
   } catch (err) {
     console.error('Failed to fetch decks:', err);
+  }
+}
+
+// Видалити колоду з масиву
+async function deleteDeck(index: number) {
+  const deck = decks.value[index];
+  if (!deck) return;
+
+  const token = localStorage.getItem('accessToken');
+  if (!token) return;
+
+  try {
+    await $fetch(`/deck/${deck.deckId}`, {
+      method: 'DELETE',
+      baseURL: 'http://localhost:42069',
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    });
+
+    // Видаляємо з локального масиву лише після успішного видалення на сервері
+    decks.value.splice(index, 1);
+    hoveredIndex.value = null;
+  } catch (error) {
+    console.error(`Failed to delete deck ${deck.deckId}`, error);
+    alert('Не вдалося видалити колоду. Спробуйте пізніше.');
   }
 }
 
@@ -93,169 +210,18 @@ onMounted(() => {
 });
 </script>
 
-<template>
-  <div class="screen">
-    <div class="header"></div>
-    <ul class="grid">
-      <li
-        class="grid__element"
-        v-for="(item, index) in textPartListOne"
-        :key="index"
-        @click="toggleValue"
-      >
-        <NuxtLink to="/dex">
-          <div class="grid__element-img">
-            <img :src="item.image" alt="folder" width="100%" height="100%" />
-          </div>
-          <div class="grid__element-text">
-            <h3>{{ item.title }}</h3>
-            <span>Колод: {{ item.cards }}</span>
-          </div>
-        </NuxtLink>
-      </li>
-    </ul>
-
-    <div class="form" v-if="isForm">
-      <div class="header"></div>
-      <div class="content">
-        <input type="text" placeholder="Назва каталогу" v-model="name" />
-        <input type="text" placeholder="Опис каталогу" v-model="description" />
-        <div class="buttons">
-          <button class="blue" @click="addItem">Додати</button>
-          <button class="red" @click="addFolder">Закрити</button>
-        </div>
-      </div>
-    </div>
-
-    <button class="plus" @click="addFolder">+</button>
-  </div>
-</template>
-
-<style lang="scss" scoped>
-.header {
-  width: 100%;
-  height: 50px;
-  background: #26adde;
+<style scoped>
+/* Плавна поява/зникнення оверлею */
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.25s ease;
 }
-
-.grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 16px;
-  padding: 16px;
-
-  &__element {
-    background: #ffffff;
-    border-radius: 12px;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
-    overflow: hidden;
-    cursor: pointer;
-    transition: transform 0.2s ease;
-
-    &:hover {
-      transform: translateY(-2px);
-    }
-
-    &-img {
-      width: 100%;
-      height: 150px;
-
-      img {
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-      }
-    }
-
-    &-text {
-      padding: 12px;
-      color: #333;
-
-      h3 {
-        font-size: 16px;
-        font-weight: bold;
-        margin-bottom: 4px;
-      }
-
-      span {
-        font-size: 14px;
-        color: #666;
-      }
-    }
-  }
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
 }
-
-.plus {
-  width: 50px;
-  height: 50px;
-  background: #26adde;
-  color: white;
-  border: none;
-  border-radius: 50%;
-  font-size: 24px;
-  position: absolute;
-  right: 16px;
-  bottom: 16px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-  cursor: pointer;
-}
-
-.form {
-  position: absolute;
-  width: 100%;
-  max-width: 400px;
-  left: 50%;
-  transform: translateX(-50%);
-  top: 200px;
-  background: #ffffff;
-  border-radius: 20px;
-  border: 2px solid #26adde;
-  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
-  padding: 20px;
-  z-index: 10;
-}
-
-.content {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-
-  input {
-    height: 50px;
-    padding: 0 12px;
-    border: 1px solid #ccc;
-    border-radius: 10px;
-    font-size: 16px;
-    color: #333;
-
-    &::placeholder {
-      color: #aaa;
-    }
-  }
-
-  .buttons {
-    display: flex;
-    justify-content: space-between;
-
-    button {
-      flex: 1;
-      height: 45px;
-      border-radius: 9999px;
-      font-size: 16px;
-      font-weight: 600;
-      border: none;
-      color: white;
-      margin: 0 5px;
-      cursor: pointer;
-
-      &.red {
-        background: #e81f1f;
-      }
-
-      &.blue {
-        background: #26adde;
-      }
-    }
-  }
+.fade-enter-to,
+.fade-leave-from {
+  opacity: 1;
 }
 </style>
